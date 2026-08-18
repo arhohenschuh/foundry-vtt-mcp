@@ -517,8 +517,20 @@ export class QueryHandlers {
       }
 
       const placement = data.placement || 'random';
-      if (placement === 'coordinates' && (!Array.isArray(data.coordinates) || data.coordinates.length === 0)) {
-        throw new Error('coordinates array is required when placement type is "coordinates"');
+      if (placement === 'coordinates') {
+        if (!Array.isArray(data.coordinates) || data.coordinates.length === 0) {
+          throw new Error('coordinates array is required when placement type is "coordinates"');
+        }
+        if (data.coordinates.length < data.actorIds.length) {
+          throw new Error(
+            `coordinates array must include at least one coordinate per actor (${data.actorIds.length} actors required, ${data.coordinates.length} provided)`
+          );
+        }
+        for (const coordinate of data.coordinates) {
+          if (!coordinate || typeof coordinate.x !== 'number' || typeof coordinate.y !== 'number') {
+            throw new Error('each coordinate must include numeric x and y values');
+          }
+        }
       }
 
       return await this.dataAccess.addActorsToScene({

@@ -41,7 +41,8 @@ export class TokenManipulationTools {
             },
             coordinates: {
               type: 'array',
-              description: 'Explicit coordinate list to place tokens when placement is "coordinates"',
+              description:
+                'Explicit coordinate list to place tokens when placement is "coordinates"',
               items: {
                 type: 'object',
                 properties: {
@@ -249,19 +250,42 @@ export class TokenManipulationTools {
   }
 
   async handleAddActorsToScene(args: any): Promise<any> {
-    const schema = z.object({
-      actorIds: z.array(z.string()).min(1),
-      placement: z.enum(['random', 'grid', 'center', 'coordinates']).default('random'),
-      coordinates: z
-        .array(
-          z.object({
-            x: z.number(),
-            y: z.number(),
-          })
-        )
-        .optional(),
-      hidden: z.boolean().optional().default(false),
-    });
+    const schema = z
+      .object({
+        actorIds: z.array(z.string()).min(1),
+        placement: z.enum(['random', 'grid', 'center', 'coordinates']).default('random'),
+        coordinates: z
+          .array(
+            z.object({
+              x: z.number(),
+              y: z.number(),
+            })
+          )
+          .optional(),
+        hidden: z.boolean().optional().default(false),
+      })
+      .superRefine((value, ctx) => {
+        if (value.placement !== 'coordinates') {
+          return;
+        }
+
+        if (!value.coordinates || value.coordinates.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'coordinates are required when placement is "coordinates"',
+            path: ['coordinates'],
+          });
+          return;
+        }
+
+        if (value.coordinates.length < value.actorIds.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `coordinates array must include at least one coordinate per actor (${value.actorIds.length} actors required, ${value.coordinates.length} provided)`,
+            path: ['coordinates'],
+          });
+        }
+      });
 
     const { actorIds, placement, coordinates, hidden } = schema.parse(args);
 

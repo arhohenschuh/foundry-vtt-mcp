@@ -5253,6 +5253,22 @@ export class FoundryDataAccess {
 
     this.auditLog('addActorsToScene', placement, 'success');
 
+    if (placement.placement === 'coordinates') {
+      if (!Array.isArray(placement.coordinates) || placement.coordinates.length === 0) {
+        throw new Error('coordinates array is required when placement type is "coordinates"');
+      }
+      if (placement.coordinates.length < placement.actorIds.length) {
+        throw new Error(
+          `coordinates array must include at least one coordinate per actor (${placement.actorIds.length} actors required, ${placement.coordinates.length} provided)`
+        );
+      }
+      for (const coordinate of placement.coordinates) {
+        if (!coordinate || typeof coordinate.x !== 'number' || typeof coordinate.y !== 'number') {
+          throw new Error('each coordinate must include numeric x and y values');
+        }
+      }
+    }
+
     try {
       const tokenData: any[] = [];
       const errors: string[] = [];

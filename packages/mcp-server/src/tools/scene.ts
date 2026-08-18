@@ -101,6 +101,13 @@ export class SceneTools {
   }
 
   private formatSceneResponse(sceneData: any, includeTokens: boolean, includeHidden: boolean): any {
+    const grid = {
+      size: sceneData.gridSize ?? 100,
+      type: sceneData.gridType ?? 'square',
+      distance: sceneData.gridDistance ?? sceneData.gridSize ?? 100,
+      units: sceneData.gridUnits ?? 'pixels',
+    };
+
     const response: any = {
       id: sceneData.id,
       name: sceneData.name,
@@ -114,17 +121,9 @@ export class SceneTools {
         origin: { x: 0, y: 0 },
         width: sceneData.width,
         height: sceneData.height,
-        gridSize: sceneData.gridSize ?? 100,
-        gridType: sceneData.gridType ?? 'square',
-        gridDistance: sceneData.gridDistance ?? sceneData.gridSize ?? 100,
-        units: sceneData.gridUnits ?? 'pixels',
+        ...grid,
       },
-      grid: {
-        size: sceneData.gridSize ?? 100,
-        type: sceneData.gridType ?? 'square',
-        distance: sceneData.gridDistance ?? sceneData.gridSize ?? 100,
-        units: sceneData.gridUnits ?? 'pixels',
-      },
+      grid,
       hasBackground: !!sceneData.background,
       navigation: sceneData.navigation,
       elements: {
