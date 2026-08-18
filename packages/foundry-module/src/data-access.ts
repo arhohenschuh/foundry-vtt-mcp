@@ -7623,7 +7623,7 @@ export class FoundryDataAccess {
   async getTokenActions(data: { tokenId: string }): Promise<any> {
     this.validateFoundryState();
 
-    const scene = (game.scenes as any).current;
+    const scene = (game.scenes as any).active;
     if (!scene) {
       throw new Error('No active scene found');
     }
