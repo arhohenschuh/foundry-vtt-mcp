@@ -113,13 +113,13 @@ Once connected, ask Claude Desktop:
 
 ## Features
 
-- **43 MCP Tools** that allow Claude to interact with Foundry
+- **45 MCP Tools** that allow Claude to interact with Foundry
 - **D&D 5e NPC Creation Suite**: Build complete NPCs from prompts — stat block, attacks, saves, auras, and spellcasting
 - **Mongoose Traveller 2e (mgt2e) Support**: Full actor lifecycle — create/update/delete travellers, NPCs, creatures, and spacecraft with skill shorthand normalisation; creature compendium index with characteristic DMs; weapon-trait enum reference
 - **WFRP4e Support**: Character reading plus editing — update characteristics, wounds, skills and careers, and add or remove items on existing actors
 - **Generic Actor CRUD**: `manage-actors` creates, updates, and deletes actors of any type on any system; also updates and deletes embedded items
 - **Character Management**: Access stats, abilities, inventory, and detailed entity information
-- **Token Manipulation**: Move, update, delete tokens and manage status conditions
+- **Token Manipulation**: Move, update, delete tokens, manage status conditions, and execute placed-token attacks, spells, legendary actions, and lair actions
 - **Enhanced Compendium Search**: Instant filtering by CR, type, abilities, and more
 - **Content Creation**: Generate actors, NPCs, and quest journals (with optional folder organisation)
 - **World Item Management**: Create, list, and update world-level Items; attach items directly to actors
@@ -143,6 +143,8 @@ Once connected, ask Claude Desktop:
 - **8** search-character-items  
 - **9** get-character-entity
 - **10** get-token-details
+- **10a** get-token-actions
+- **10b** use-token-action
 - **11** toggle-token-condition (add)  
 - **12** toggle-token-condition (remove)
 - **13** update-token

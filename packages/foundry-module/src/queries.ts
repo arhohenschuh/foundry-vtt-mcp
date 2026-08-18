@@ -96,6 +96,7 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.updateToken`] = this.handleUpdateToken.bind(this);
     CONFIG.queries[`${modulePrefix}.deleteTokens`] = this.handleDeleteTokens.bind(this);
     CONFIG.queries[`${modulePrefix}.getTokenDetails`] = this.handleGetTokenDetails.bind(this);
+    CONFIG.queries[`${modulePrefix}.getTokenActions`] = this.handleGetTokenActions.bind(this);
     CONFIG.queries[`${modulePrefix}.toggleTokenCondition`] =
       this.handleToggleTokenCondition.bind(this);
     CONFIG.queries[`${modulePrefix}.getAvailableConditions`] =
@@ -137,6 +138,7 @@ export class QueryHandlers {
     CONFIG.queries[`${modulePrefix}.update-token`] = this.handleUpdateToken.bind(this);
     CONFIG.queries[`${modulePrefix}.delete-tokens`] = this.handleDeleteTokens.bind(this);
     CONFIG.queries[`${modulePrefix}.get-token-details`] = this.handleGetTokenDetails.bind(this);
+    CONFIG.queries[`${modulePrefix}.get-token-actions`] = this.handleGetTokenActions.bind(this);
     CONFIG.queries[`${modulePrefix}.toggle-token-condition`] =
       this.handleToggleTokenCondition.bind(this);
     CONFIG.queries[`${modulePrefix}.get-available-conditions`] =
@@ -1440,12 +1442,35 @@ export class QueryHandlers {
   }
 
   /**
+   * Handle placed token action discovery.
+   */
+  private async handleGetTokenActions(data: { tokenId: string }): Promise<any> {
+    try {
+      const gmCheck = this.validateGMAccess();
+      if (!gmCheck.allowed) {
+        return { error: 'Access denied', success: false };
+      }
+
+      this.dataAccess.validateFoundryState();
+      if (!data.tokenId) {
+        throw new Error('tokenId is required');
+      }
+
+      return await this.dataAccess.getTokenActions(data);
+    } catch (error) {
+      throw new Error(
+        `Failed to get token actions: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
    * Handle toggle token condition request
    */
   private async handleToggleTokenCondition(data: {
     tokenId: string;
     conditionId: string;
-    active: boolean;
+    active?: boolean;
   }): Promise<any> {
     try {
       // SECURITY: Silent GM validation
@@ -1505,6 +1530,7 @@ export class QueryHandlers {
     options?: {
       consume?: boolean;
       configureDialog?: boolean;
+      skipDialog?: boolean;
       spellLevel?: number;
       versatile?: boolean;
     };
