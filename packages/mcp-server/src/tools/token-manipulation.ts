@@ -22,6 +22,74 @@ export class TokenManipulationTools {
   getToolDefinitions() {
     return [
       {
+        name: 'add-actors-to-scene',
+        description:
+          'Place one or more existing actors as tokens in the current scene. Use get-current-scene first to read the scene dimensions and coordinate grid before specifying x/y locations.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            actorIds: {
+              type: 'array',
+              description: 'Actor IDs to place as tokens in the current scene',
+              items: { type: 'string' },
+            },
+            placement: {
+              type: 'string',
+              enum: ['random', 'grid', 'center', 'coordinates'],
+              description: 'Placement strategy. Use "coordinates" with explicit x/y values.',
+              default: 'random',
+            },
+            coordinates: {
+              type: 'array',
+              description:
+                'Explicit coordinate list to place tokens when placement is "coordinates"',
+              items: {
+                type: 'object',
+                properties: {
+                  x: { type: 'number', description: 'X coordinate in pixels' },
+                  y: { type: 'number', description: 'Y coordinate in pixels' },
+                },
+                required: ['x', 'y'],
+              },
+            },
+            hidden: {
+              type: 'boolean',
+              description: 'Whether the newly placed tokens should be hidden from players',
+              default: false,
+            },
+          },
+          required: ['actorIds'],
+        },
+      },
+      {
+        name: 'place-token',
+        description:
+          'Place a single actor token at specific scene coordinates. Use get-current-scene first to extract the scene grid and dimensions before choosing x/y values.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            actorId: {
+              type: 'string',
+              description: 'The ID of the actor to place as a token',
+            },
+            x: {
+              type: 'number',
+              description: 'The new X coordinate (in pixels)',
+            },
+            y: {
+              type: 'number',
+              description: 'The new Y coordinate (in pixels)',
+            },
+            hidden: {
+              type: 'boolean',
+              description: 'Whether the token should be hidden from players',
+              default: false,
+            },
+          },
+          required: ['actorId', 'x', 'y'],
+        },
+      },
+      {
         name: 'move-token',
         description:
           'Move a token to a new position on the current scene. Can optionally animate the movement.',
@@ -179,6 +247,111 @@ export class TokenManipulationTools {
         },
       },
     ];
+  }
+
+  async handleAddActorsToScene(args: any): Promise<any> {
+    const schema = z
+      .object({
+        actorIds: z.array(z.string()).min(1),
+        placement: z.enum(['random', 'grid', 'center', 'coordinates']).default('random'),
+        coordinates: z
+          .array(
+            z.object({
+              x: z.number(),
+              y: z.number(),
+            })
+          )
+          .optional(),
+        hidden: z.boolean().optional().default(false),
+      })
+      .superRefine((value, ctx) => {
+        if (value.placement !== 'coordinates') {
+          return;
+        }
+
+        if (!value.coordinates || value.coordinates.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'coordinates are required when placement is "coordinates"',
+            path: ['coordinates'],
+          });
+          return;
+        }
+
+        if (value.coordinates.length < value.actorIds.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `coordinates array must include at least one coordinate per actor (${value.actorIds.length} actors required, ${value.coordinates.length} provided)`,
+            path: ['coordinates'],
+          });
+        }
+      });
+
+    const { actorIds, placement, coordinates, hidden } = schema.parse(args);
+
+    this.logger.info('Adding actors to scene', { actorIds, placement, coordinates });
+
+    try {
+      const result = await this.foundryClient.query('foundry-mcp-bridge.addActorsToScene', {
+        actorIds,
+        placement,
+        coordinates,
+        hidden,
+      });
+
+      this.logger.debug('Actors placed successfully', { actorIds, result });
+
+      return {
+        success: result.success,
+        tokensCreated: result.tokensCreated,
+        tokenIds: result.tokenIds,
+        errors: result.errors,
+      };
+    } catch (error) {
+      this.logger.error('Failed to place actors in scene', error);
+      throw new Error(
+        `Failed to place actors in scene: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handlePlaceToken(args: any): Promise<any> {
+    const schema = z.object({
+      actorId: z.string(),
+      x: z.number(),
+      y: z.number(),
+      hidden: z.boolean().optional().default(false),
+    });
+
+    const { actorId, x, y, hidden } = schema.parse(args);
+
+    this.logger.info('Placing token at coordinates', { actorId, x, y, hidden });
+
+    try {
+      const result = await this.foundryClient.query('foundry-mcp-bridge.addActorsToScene', {
+        actorIds: [actorId],
+        placement: 'coordinates',
+        coordinates: [{ x, y }],
+        hidden,
+      });
+
+      const tokenId = result.tokenIds?.[0];
+
+      return {
+        success: result.success,
+        actorId,
+        tokenId,
+        position: { x, y },
+        hidden,
+        tokensCreated: result.tokensCreated,
+        errors: result.errors,
+      };
+    } catch (error) {
+      this.logger.error('Failed to place token at coordinates', error);
+      throw new Error(
+        `Failed to place token at coordinates: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   async handleMoveToken(args: any): Promise<any> {
