@@ -7856,8 +7856,11 @@ export class FoundryDataAccess {
 
     const { actorIdentifier, itemIdentifier, targets, options = {} } = params;
 
-    // Find the actor
-    const actor = this.findActorByIdentifier(actorIdentifier);
+    // Prefer the placed token's synthetic actor so unlinked token changes and
+    // self-targeting apply to this specific token rather than another copy.
+    const activeScene = (game.scenes as any)?.active;
+    const actingToken = activeScene?.tokens?.get(actorIdentifier);
+    const actor = actingToken?.actor ?? this.findActorByIdentifier(actorIdentifier);
     if (!actor) {
       throw new Error(`Actor not found: ${actorIdentifier}`);
     }
@@ -7878,7 +7881,7 @@ export class FoundryDataAccess {
     const resolvedTargetNames: string[] = [];
     if (targets && targets.length > 0) {
       // Get all tokens on the current scene
-      const scene = (game.scenes as any)?.active;
+      const scene = activeScene;
       if (!scene) {
         throw new Error('No active scene to find targets on');
       }
@@ -7890,9 +7893,9 @@ export class FoundryDataAccess {
         // Handle "self" - target the caster's token
         if (targetIdentifier.toLowerCase() === 'self') {
           // Find token for the caster actor
-          const selfToken = sceneTokens.find(
-            (t: any) => t.actor?.id === actor.id || t.actorId === actor.id
-          );
+          const selfToken =
+            actingToken ??
+            sceneTokens.find((t: any) => t.actor?.id === actor.id || t.actorId === actor.id);
           if (selfToken) {
             tokenIds.push(selfToken.id);
             resolvedTargetNames.push(actor.name);

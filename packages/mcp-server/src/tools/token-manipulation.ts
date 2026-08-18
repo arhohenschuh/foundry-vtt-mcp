@@ -679,7 +679,7 @@ export class TokenManipulationTools {
     }
   }
 
-  async handleGetAvailableConditions(args: any): Promise<any> {
+  async handleGetAvailableConditions(_args: any): Promise<any> {
     this.logger.info('Getting available conditions');
 
     try {
