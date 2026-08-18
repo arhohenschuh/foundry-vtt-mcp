@@ -193,6 +193,10 @@ interface SceneInfo {
   width: number;
   height: number;
   padding: number;
+  gridSize?: number;
+  gridType?: string;
+  gridDistance?: number;
+  gridUnits?: string;
   active: boolean;
   navigation: boolean;
   tokens: SceneToken[];
@@ -3736,6 +3740,10 @@ export class FoundryDataAccess {
       width: scene.width,
       height: scene.height,
       padding: scene.padding,
+      gridSize: scene.grid?.size ?? 100,
+      gridType: scene.grid?.type ?? 'square',
+      gridDistance: scene.grid?.distance ?? scene.grid?.size ?? 100,
+      gridUnits: scene.grid?.units ?? 'pixels',
       active: scene.active,
       navigation: scene.navigation,
       tokens: scene.tokens.map((token: any) => ({

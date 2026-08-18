@@ -499,7 +499,8 @@ export class QueryHandlers {
    */
   private async handleAddActorsToScene(data: {
     actorIds: string[];
-    placement?: 'random' | 'grid' | 'center';
+    placement?: 'random' | 'grid' | 'center' | 'coordinates';
+    coordinates?: { x: number; y: number }[];
     hidden?: boolean;
   }): Promise<any> {
     try {
@@ -515,10 +516,16 @@ export class QueryHandlers {
         throw new Error('actorIds array is required and must not be empty');
       }
 
+      const placement = data.placement || 'random';
+      if (placement === 'coordinates' && (!Array.isArray(data.coordinates) || data.coordinates.length === 0)) {
+        throw new Error('coordinates array is required when placement type is "coordinates"');
+      }
+
       return await this.dataAccess.addActorsToScene({
         actorIds: data.actorIds,
-        placement: data.placement || 'random',
+        placement,
         hidden: data.hidden || false,
+        ...(data.coordinates ? { coordinates: data.coordinates } : {}),
       });
     } catch (error) {
       throw new Error(

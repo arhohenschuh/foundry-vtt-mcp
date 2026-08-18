@@ -79,6 +79,10 @@ export interface SceneInfo {
   width: number;
   height: number;
   padding: number;
+  gridSize?: number;
+  gridType?: string;
+  gridDistance?: number;
+  gridUnits?: string;
   active: boolean;
   navigation: boolean;
   tokens: SceneToken[];

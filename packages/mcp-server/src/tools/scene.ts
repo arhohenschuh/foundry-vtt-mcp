@@ -110,6 +110,21 @@ export class SceneTools {
         height: sceneData.height,
         padding: sceneData.padding,
       },
+      coordinates: {
+        origin: { x: 0, y: 0 },
+        width: sceneData.width,
+        height: sceneData.height,
+        gridSize: sceneData.gridSize ?? 100,
+        gridType: sceneData.gridType ?? 'square',
+        gridDistance: sceneData.gridDistance ?? sceneData.gridSize ?? 100,
+        units: sceneData.gridUnits ?? 'pixels',
+      },
+      grid: {
+        size: sceneData.gridSize ?? 100,
+        type: sceneData.gridType ?? 'square',
+        distance: sceneData.gridDistance ?? sceneData.gridSize ?? 100,
+        units: sceneData.gridUnits ?? 'pixels',
+      },
       hasBackground: !!sceneData.background,
       navigation: sceneData.navigation,
       elements: {
