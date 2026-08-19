@@ -18,11 +18,39 @@ on:
       dry_run_foundry:
         description: 'Test Foundry API call without actually updating registry'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20.12.2'
+
+    - name: Install workspace dependencies (CI)
+      run: npm ci --workspaces --include-workspace-root
+
+    - name: Check version consistency
+      run: npm run version:check
+
+    - name: Check TypeScript contracts
+      run: npm run typecheck
+
+    - name: Run tests
+      run: npm test
+
+    - name: Check circular dependencies
+      run: npm run audit:circular
+
   build-nsis:
+    needs: quality
     runs-on: windows-latest
     
     steps:
@@ -227,6 +255,7 @@ jobs:
         retention-days: 30
 
   build-mac-pkg:
+    needs: quality
     runs-on: macos-latest
 
     steps:
