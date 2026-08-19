@@ -113,13 +113,13 @@ Once connected, ask Claude Desktop:
 
 ## Features
 
-- **43 MCP Tools** that allow Claude to interact with Foundry
+- **45 MCP Tools** that allow Claude to interact with Foundry
 - **D&D 5e NPC Creation Suite**: Build complete NPCs from prompts — stat block, attacks, saves, auras, and spellcasting
 - **Mongoose Traveller 2e (mgt2e) Support**: Full actor lifecycle — create/update/delete travellers, NPCs, creatures, and spacecraft with skill shorthand normalisation; creature compendium index with characteristic DMs; weapon-trait enum reference
 - **WFRP4e Support**: Character reading plus editing — update characteristics, wounds, skills and careers, and add or remove items on existing actors
 - **Generic Actor CRUD**: `manage-actors` creates, updates, and deletes actors of any type on any system; also updates and deletes embedded items
 - **Character Management**: Access stats, abilities, inventory, and detailed entity information
-- **Token Manipulation**: Move, update, delete tokens and manage status conditions
+- **Token Manipulation**: Move, update, delete tokens, manage status conditions, and execute placed-token attacks, spells, legendary actions, and lair actions
 - **Enhanced Compendium Search**: Instant filtering by CR, type, abilities, and more
 - **Content Creation**: Generate actors, NPCs, and quest journals (with optional folder organisation)
 - **World Item Management**: Create, list, and update world-level Items; attach items directly to actors
@@ -143,37 +143,39 @@ Once connected, ask Claude Desktop:
 - **8** search-character-items  
 - **9** get-character-entity
 - **10** get-token-details
-- **11** toggle-token-condition (add)  
-- **12** toggle-token-condition (remove)
-- **13** update-token
-- **14** search-compendium
-- **15** get-compendium-item
-- **16** get-compendium-entry-full
-- **17** list-creatures-by-criteria  
-- **18** list-journals  
-- **19** create-quest-journal
-- **20** update-quest-journal
-- **21** search-journals
-- **22** link-quest-to-npc
-- **23** list-actor-ownership
-- **24** assign-actor-ownership
-- **25** remove-actor-ownership
-- **26** move-token
-- **27** use-item
-- **28** request-player-rolls
-- **29** generate-map
-- **30** check-map-status
-- **31** cancel-map-job
-- **32** switch-scene  
-- **33** create-actor-from-compendium
-- **34** list-dsa5-archetypes (DSA5 Only)
-- **35** create-dsa5-character-from-archetype (DSA5 Only)
-- **36** create-campaign-dashboard
-- **37** manage-world-items (create / list / update world items, add items to actor, describe system enum schema)
-- **38** dnd5e-create-npc (D&D 5e Only)
-- **39** dnd5e-add-feature (D&D 5e Only)
-- **40** dnd5e-add-features-from-compendium (D&D 5e Only)
-- **41** manage-actors (create / update / delete actors; update / delete embedded items — any system)
+- **11** get-token-actions
+- **12** use-token-action
+- **13** toggle-token-condition (add)  
+- **14** toggle-token-condition (remove)
+- **15** update-token
+- **16** search-compendium
+- **17** get-compendium-item
+- **18** get-compendium-entry-full
+- **19** list-creatures-by-criteria  
+- **20** list-journals  
+- **21** create-quest-journal
+- **22** update-quest-journal
+- **23** search-journals
+- **24** link-quest-to-npc
+- **25** list-actor-ownership
+- **26** assign-actor-ownership
+- **27** remove-actor-ownership
+- **28** move-token
+- **29** use-item
+- **30** request-player-rolls
+- **31** generate-map
+- **32** check-map-status
+- **33** cancel-map-job
+- **34** switch-scene  
+- **35** create-actor-from-compendium
+- **36** list-dsa5-archetypes (DSA5 Only)
+- **37** create-dsa5-character-from-archetype (DSA5 Only)
+- **38** create-campaign-dashboard
+- **39** manage-world-items (create / list / update world items, add items to actor, describe system enum schema)
+- **40** dnd5e-create-npc (D&D 5e Only)
+- **41** dnd5e-add-feature (D&D 5e Only)
+- **42** dnd5e-add-features-from-compendium (D&D 5e Only)
+- **43** manage-actors (create / update / delete actors; update / delete embedded items — any system)
 
 ## Settings
 

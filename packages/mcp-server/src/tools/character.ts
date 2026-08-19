@@ -110,7 +110,7 @@ export class CharacterTools {
       {
         name: 'use-item',
         description:
-          'Use an item on a character (cast spell, use ability, activate feature, consume item). Opens the item dialog in Foundry VTT for the GM to configure options and confirm. Optionally specify targets by name. Returns immediately with status "initiated" - tell the user to check Foundry for any dialogs. Works across systems: D&D 5e, PF2e, DSA5. Use get-character or search-character-items first to see available items/spells.',
+          'Use an item on a character or placed token (cast spell, attack, use ability, activate feature, consume item). Identify a placed token by its token ID. Optionally specify targets by name or ID. Works across systems: D&D 5e, PF2e, DSA5. Use get-character, search-character-items, or get-token-actions first.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -135,6 +135,12 @@ export class CharacterTools {
             spellLevel: {
               type: 'number',
               description: 'For spells: cast at a higher level than base (D&D 5e upcasting)',
+            },
+            skipDialog: {
+              type: 'boolean',
+              description:
+                'Execute immediately without a Foundry configuration dialog (default: true)',
+              default: true,
             },
           },
           required: ['actorIdentifier', 'itemIdentifier'],
@@ -669,7 +675,16 @@ export class CharacterTools {
 
   async handleManageWorldItems(args: any): Promise<any> {
     const { action } = z
-      .object({ action: z.enum(['create', 'list', 'update', 'add-to-actor', 'remove-from-actor', 'describe']) })
+      .object({
+        action: z.enum([
+          'create',
+          'list',
+          'update',
+          'add-to-actor',
+          'remove-from-actor',
+          'describe',
+        ]),
+      })
       .parse(args);
 
     switch (action) {

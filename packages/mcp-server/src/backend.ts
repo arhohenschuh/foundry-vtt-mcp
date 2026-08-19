@@ -1713,6 +1713,16 @@ async function startBackend(): Promise<void> {
 
                   break;
 
+                case 'get-token-actions':
+                  result = await tokenManipulationTools.handleGetTokenActions(args);
+
+                  break;
+
+                case 'use-token-action':
+                  result = await tokenManipulationTools.handleUseTokenAction(args);
+
+                  break;
+
                 case 'toggle-token-condition':
                   result = await tokenManipulationTools.handleToggleTokenCondition(args);
 

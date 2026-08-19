@@ -7618,12 +7618,71 @@ export class FoundryDataAccess {
   }
 
   /**
+   * List executable items and activities on a placed token's actor.
+   */
+  async getTokenActions(data: { tokenId: string }): Promise<any> {
+    this.validateFoundryState();
+
+    const scene = (game.scenes as any).active;
+    if (!scene) {
+      throw new Error('No active scene found');
+    }
+
+    const token = scene.tokens.get(data.tokenId);
+    if (!token) {
+      throw new Error(`Token ${data.tokenId} not found in current scene`);
+    }
+    if (!token.actor) {
+      throw new Error(`Token ${data.tokenId} has no associated actor`);
+    }
+
+    const actions = Array.from(token.actor.items || [])
+      .map((item: any) => {
+        const rawActivities = item.system?.activities;
+        const activities = Array.from(
+          rawActivities?.contents ??
+            (rawActivities && typeof rawActivities[Symbol.iterator] === 'function'
+              ? rawActivities
+              : Object.values(rawActivities || {}))
+        ).map((activity: any) => ({
+          id: activity.id ?? activity._id,
+          name: activity.name || item.name,
+          type: activity.type,
+          activationType: activity.activation?.type,
+        }));
+
+        return {
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          img: item.img,
+          activationType: item.system?.activation?.type,
+          activities,
+        };
+      })
+      .filter(
+        (action: any) =>
+          action.activationType ||
+          action.activities.length > 0 ||
+          ['weapon', 'spell', 'feat', 'action', 'consumable'].includes(action.type)
+      );
+
+    return {
+      success: true,
+      tokenId: token.id,
+      tokenName: token.name,
+      actorName: token.actor.name,
+      actions,
+    };
+  }
+
+  /**
    * Toggle a status condition on a token
    */
   async toggleTokenCondition(data: {
     tokenId: string;
     conditionId: string;
-    active: boolean;
+    active?: boolean;
   }): Promise<any> {
     this.validateFoundryState();
 
@@ -7663,7 +7722,21 @@ export class FoundryDataAccess {
         throw new Error(`Condition not found: ${data.conditionId}`);
       }
 
-      if (data.active) {
+      const effects = actor.effects?.contents || [];
+      const matchingEffects = effects.filter((effect: any) => {
+        if (effect.statuses?.has(data.conditionId)) return true;
+        const names = [effect.name, effect.label]
+          .filter(Boolean)
+          .map((name: string) => name.toLowerCase());
+        return (
+          names.includes(data.conditionId.toLowerCase()) ||
+          names.includes((condition.name || condition.label || condition.id).toLowerCase())
+        );
+      });
+      const isCurrentlyActive = matchingEffects.length > 0;
+      const shouldBeActive = data.active ?? !isCurrentlyActive;
+
+      if (shouldBeActive && !isCurrentlyActive) {
         // Add the condition - handle DSA5 and other systems
         const effectData: any = {
           name: condition.name || condition.label || condition.id,
@@ -7688,31 +7761,12 @@ export class FoundryDataAccess {
         }
 
         await actor.createEmbeddedDocuments('ActiveEffect', [effectData]);
-      } else {
+      } else if (!shouldBeActive && isCurrentlyActive) {
         // Remove the condition
-        const effects = actor.effects?.contents || [];
-        const effectsToRemove = effects.filter((effect: any) => {
-          // Check by status (D&D5e, PF2e)
-          if (effect.statuses?.has(data.conditionId)) {
-            return true;
-          }
-          // Check by name (fallback for all systems including DSA5)
-          if (effect.name?.toLowerCase() === data.conditionId.toLowerCase()) {
-            return true;
-          }
-          // Check by label (some systems use label instead of name)
-          if (effect.label?.toLowerCase() === data.conditionId.toLowerCase()) {
-            return true;
-          }
-          return false;
-        });
-
-        if (effectsToRemove.length > 0) {
-          await actor.deleteEmbeddedDocuments(
-            'ActiveEffect',
-            effectsToRemove.map((e: any) => e.id)
-          );
-        }
+        await actor.deleteEmbeddedDocuments(
+          'ActiveEffect',
+          matchingEffects.map((effect: any) => effect.id)
+        );
       }
 
       this.auditLog('toggleTokenCondition', data, 'success');
@@ -7723,9 +7777,9 @@ export class FoundryDataAccess {
         tokenName: token.name,
         conditionId: data.conditionId,
         conditionName: condition.name || condition.label || condition.id,
-        isActive: data.active,
-        active: data.active,
-        message: data.active
+        isActive: shouldBeActive,
+        active: shouldBeActive,
+        message: shouldBeActive
           ? `Applied ${data.conditionId} to ${token.name}`
           : `Removed ${data.conditionId} from ${token.name}`,
       };
@@ -7802,8 +7856,11 @@ export class FoundryDataAccess {
 
     const { actorIdentifier, itemIdentifier, targets, options = {} } = params;
 
-    // Find the actor
-    const actor = this.findActorByIdentifier(actorIdentifier);
+    // Prefer the placed token's synthetic actor so unlinked token changes and
+    // self-targeting apply to this specific token rather than another copy.
+    const activeScene = (game.scenes as any)?.active;
+    const actingToken = activeScene?.tokens?.get(actorIdentifier);
+    const actor = actingToken?.actor ?? this.findActorByIdentifier(actorIdentifier);
     if (!actor) {
       throw new Error(`Actor not found: ${actorIdentifier}`);
     }
@@ -7824,7 +7881,7 @@ export class FoundryDataAccess {
     const resolvedTargetNames: string[] = [];
     if (targets && targets.length > 0) {
       // Get all tokens on the current scene
-      const scene = (game.scenes as any)?.active;
+      const scene = activeScene;
       if (!scene) {
         throw new Error('No active scene to find targets on');
       }
@@ -7836,9 +7893,9 @@ export class FoundryDataAccess {
         // Handle "self" - target the caster's token
         if (targetIdentifier.toLowerCase() === 'self') {
           // Find token for the caster actor
-          const selfToken = sceneTokens.find(
-            (t: any) => t.actor?.id === actor.id || t.actorId === actor.id
-          );
+          const selfToken =
+            actingToken ??
+            sceneTokens.find((t: any) => t.actor?.id === actor.id || t.actorId === actor.id);
           if (selfToken) {
             tokenIds.push(selfToken.id);
             resolvedTargetNames.push(actor.name);
@@ -7891,8 +7948,7 @@ export class FoundryDataAccess {
           useOptions.consumeResource = options.consume ?? true;
           useOptions.consumeSpellSlot = options.consume ?? true;
           useOptions.consumeUsage = options.consume ?? true;
-          // Always show dialog so GM can make choices
-          useOptions.configureDialog = true;
+          useOptions.configureDialog = options.configureDialog ?? !(options.skipDialog ?? true);
         }
 
         // Spell level for upcasting
@@ -7901,10 +7957,14 @@ export class FoundryDataAccess {
           useOptions.level = options.spellLevel; // generic
         }
 
-        // Fire and forget - don't await, as dialogs block the promise
-        itemAny.use(useOptions).catch((err: Error) => {
-          console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
-        });
+        if (useOptions.configureDialog) {
+          // A displayed dialog requires GM interaction and may keep the promise pending.
+          itemAny.use(useOptions).catch((err: Error) => {
+            console.error(`[foundry-mcp-bridge] Error using item ${item.name}:`, err);
+          });
+        } else {
+          await itemAny.use(useOptions);
+        }
       } else if (typeof itemAny.toChat === 'function') {
         // PF2e and some other systems use toChat
         if (typeof itemAny.toMessage === 'function') {
@@ -7976,6 +8036,11 @@ export class FoundryDataAccess {
 
       const targetInfo =
         resolvedTargetNames.length > 0 ? ` targeting ${resolvedTargetNames.join(', ')}` : '';
+      const requiresGMInteraction =
+        systemId === 'dnd5e' ? (options.configureDialog ?? !(options.skipDialog ?? true)) : false;
+      const interactionMessage = requiresGMInteraction
+        ? ' A configuration dialog was opened in Foundry VTT for the GM to confirm.'
+        : ' The result appears in Foundry chat.';
 
       const result: {
         success: boolean;
@@ -7988,10 +8053,10 @@ export class FoundryDataAccess {
       } = {
         success: true,
         status: 'initiated',
-        message: `Item use initiated for ${actor.name} using ${item.name}${targetInfo}. If a dialog appeared in Foundry VTT, the GM should select options and confirm. The result will appear in chat.`,
+        message: `Item use initiated for ${actor.name} using ${item.name}${targetInfo}.${interactionMessage}`,
         itemName: item.name,
         actorName: actor.name,
-        requiresGMInteraction: true,
+        requiresGMInteraction,
       };
 
       if (resolvedTargetNames.length > 0) {

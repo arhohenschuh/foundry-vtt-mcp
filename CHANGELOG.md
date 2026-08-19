@@ -1,3 +1,17 @@
+## Unreleased
+
+### New Features
+
+- Added `get-token-actions` and `use-token-action` so the MCP bridge can inspect and execute attacks, spells, legendary actions, and lair actions from placed tokens, including unlinked synthetic actors.
+
+### Fixes
+
+- Token movement, updates, and deletion now report the Foundry bridge's actual result fields.
+- Omitting `active` from `toggle-token-condition` now toggles the current state and avoids duplicate effects.
+- D&D 5e item use now honors `skipDialog` and reports whether GM interaction is required.
+
+---
+
 ## v0.8.3 (2026-06-11)
 
 ### New Features

@@ -213,6 +213,60 @@ export class TokenManipulationTools {
         },
       },
       {
+        name: 'get-token-actions',
+        description:
+          'List actions available to a placed token, including attacks, spells, legendary actions, and lair actions. Returns item IDs that can be passed to use-token-action plus activity metadata.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tokenId: {
+              type: 'string',
+              description: 'The ID of the placed token',
+            },
+          },
+          required: ['tokenId'],
+        },
+      },
+      {
+        name: 'use-token-action',
+        description:
+          'Execute an action from a placed token, such as an attack, spell, legendary action, or lair action. Use get-token-actions first to discover action IDs.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tokenId: {
+              type: 'string',
+              description: 'The ID of the placed token taking the action',
+            },
+            actionIdentifier: {
+              type: 'string',
+              description: 'Action item name or ID returned by get-token-actions',
+            },
+            targets: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional target token names or IDs. Use "self" for the acting token.',
+            },
+            consume: {
+              type: 'boolean',
+              description: 'Whether to consume action resources or uses (default: true)',
+              default: true,
+            },
+            spellLevel: {
+              type: 'number',
+              description: 'Optional spell level for upcasting',
+            },
+            skipDialog: {
+              type: 'boolean',
+              description:
+                'Execute immediately without a Foundry configuration dialog (default: true)',
+              default: true,
+            },
+          },
+          required: ['tokenId', 'actionIdentifier'],
+        },
+      },
+      {
         name: 'toggle-token-condition',
         description:
           'Toggle a status effect/condition on or off for a token. Use this to apply or remove conditions like Prone, Poisoned, Blinded, etc.',
@@ -377,10 +431,11 @@ export class TokenManipulationTools {
       this.logger.debug('Token moved successfully', { tokenId });
 
       return {
-        success: true,
-        tokenId,
-        newPosition: { x, y },
-        animated: animate,
+        success: result.success,
+        tokenId: result.tokenId ?? tokenId,
+        tokenName: result.tokenName,
+        newPosition: result.newPosition ?? { x, y },
+        animated: result.animated ?? animate,
       };
     } catch (error) {
       this.logger.error('Failed to move token', error);
@@ -420,9 +475,11 @@ export class TokenManipulationTools {
       this.logger.debug('Token updated successfully', { tokenId, result });
 
       return {
-        success: true,
-        tokenId,
-        updated: true,
+        success: result.success,
+        tokenId: result.tokenId ?? tokenId,
+        tokenName: result.tokenName,
+        updated: result.success,
+        updatedProperties: result.updatedProperties,
         appliedUpdates: updates,
       };
     } catch (error) {
@@ -455,8 +512,8 @@ export class TokenManipulationTools {
       return {
         success: result.success,
         deletedCount: result.deletedCount,
-        tokenIds: result.tokenIds,
-        errors: result.errors,
+        tokenIds: result.deletedTokens ?? [],
+        failedTokenIds: result.failedTokens,
       };
     } catch (error) {
       this.logger.error('Failed to delete tokens', error);
@@ -543,6 +600,50 @@ export class TokenManipulationTools {
     }
   }
 
+  async handleGetTokenActions(args: any): Promise<any> {
+    const { tokenId } = z.object({ tokenId: z.string().min(1) }).parse(args);
+
+    this.logger.info('Getting token actions', { tokenId });
+
+    try {
+      return await this.foundryClient.query('foundry-mcp-bridge.getTokenActions', { tokenId });
+    } catch (error) {
+      this.logger.error('Failed to get token actions', error);
+      throw new Error(
+        `Failed to get token actions: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  async handleUseTokenAction(args: any): Promise<any> {
+    const schema = z.object({
+      tokenId: z.string().min(1),
+      actionIdentifier: z.string().min(1),
+      targets: z.array(z.string()).optional(),
+      consume: z.boolean().optional().default(true),
+      spellLevel: z.number().optional(),
+      skipDialog: z.boolean().optional().default(true),
+    });
+    const { tokenId, actionIdentifier, targets, consume, spellLevel, skipDialog } =
+      schema.parse(args);
+
+    this.logger.info('Using token action', { tokenId, actionIdentifier, targets });
+
+    try {
+      return await this.foundryClient.query('foundry-mcp-bridge.useItem', {
+        actorIdentifier: tokenId,
+        itemIdentifier: actionIdentifier,
+        targets,
+        options: { consume, spellLevel, skipDialog },
+      });
+    } catch (error) {
+      this.logger.error('Failed to use token action', error);
+      throw new Error(
+        `Failed to use token action "${actionIdentifier}": ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
   async handleToggleTokenCondition(args: any): Promise<any> {
     const schema = z.object({
       tokenId: z.string(),
@@ -564,8 +665,8 @@ export class TokenManipulationTools {
       this.logger.debug('Token condition toggled successfully', { tokenId, conditionId, result });
 
       return {
-        success: true,
-        tokenId,
+        success: result.success,
+        tokenId: result.tokenId ?? tokenId,
         conditionId,
         isActive: result.isActive,
         conditionName: result.conditionName,
@@ -578,7 +679,7 @@ export class TokenManipulationTools {
     }
   }
 
-  async handleGetAvailableConditions(args: any): Promise<any> {
+  async handleGetAvailableConditions(_args: any): Promise<any> {
     this.logger.info('Getting available conditions');
 
     try {
