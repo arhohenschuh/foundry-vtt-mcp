@@ -16,7 +16,7 @@ on:
         required: false
         default: ''
       dry_run_foundry:
-        description: 'Test Foundry API call without actually updating registry'
+        description: 'Render and validate the Foundry registry request without publishing it'
         required: false
         default: false
         type: boolean
@@ -40,6 +40,13 @@ jobs:
     - name: Check version consistency
       run: npm run version:check
 
+    - name: Check downstream release identity
+      run: npm run release:check
+
+    - name: Reject upstream version collisions
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: npm run release:check -- --check-upstream-tags
+
     - name: Check TypeScript contracts
       run: npm run typecheck
 
@@ -49,8 +56,34 @@ jobs:
     - name: Check circular dependencies
       run: npm run audit:circular
 
+  foundry-registry-dry-run:
+    needs: quality
+    if: github.event_name == 'workflow_dispatch' && inputs.dry_run_foundry
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20.12.2'
+
+    - name: Reject upstream version collisions
+      run: npm run release:check -- --check-upstream-tags
+
+    - name: Render Foundry registry request
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [ -z "$VERSION" ]; then
+          VERSION="v$(node -p "require('./package.json').version")"
+        fi
+        node scripts/publish-foundry-release.mjs --dry-run --tag "$VERSION"
+
   build-nsis:
     needs: quality
+    if: github.event_name != 'workflow_dispatch' || inputs.dry_run_foundry != true
     runs-on: windows-latest
     
     steps:
@@ -71,7 +104,7 @@ jobs:
             Write-Host "✓ Using manual input version: $version"
             
             # Validate version format
-            if ($version -notmatch '^v?\d+\.\d+\.\d+') {
+            if ($version -notmatch '^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
               throw "Invalid version format: '$version'. Expected format: v0.0.0 or 0.0.0"
             }
           } elseif ("${{ github.ref_type }}" -eq "tag") {
@@ -79,7 +112,7 @@ jobs:
             Write-Host "✓ Using tag version: $version"
             
             # Validate tag version format
-            if ($version -notmatch '^v?\d+\.\d+\.\d+') {
+            if ($version -notmatch '^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
               throw "Invalid tag version format: '$version'. Expected format: v0.0.0"
             }
           } else {
@@ -102,13 +135,20 @@ jobs:
             Write-Host "📦 Found package.json version: $packageVersion"
             
             # Validate version format
-            if ($packageVersion -notmatch '^\d+\.\d+\.\d+') {
+            if ($packageVersion -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
               throw "Invalid package.json version format: '$packageVersion'. Expected format: 0.0.0"
             }
             
             $version = "v$packageVersion"
             Write-Host "✓ Using package.json version: $version"
           }
+
+          $manifestVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $normalizedVersion = $version.TrimStart('v')
+          if ($normalizedVersion -ne $manifestVersion) {
+            throw "Artifact version '$normalizedVersion' does not match package.json version '$manifestVersion'"
+          }
+          $version = "v$normalizedVersion"
           
           # Final validation - ensure no invalid characters for filename
           if ($version -match '[<>:"/\\|?*]') {
@@ -208,7 +248,7 @@ jobs:
           "3. Configure Claude Desktop to connect to this server",
           "4. Install the MCP Bridge module in Foundry VTT",
           "",
-          "For full documentation visit: https://github.com/adambdooley/foundry-vtt-mcp",
+          "For full documentation visit: ${{ github.server_url }}/${{ github.repository }}",
           "",
           "Version: ${{ env.PACKAGE_VERSION }}"
         )
@@ -256,6 +296,7 @@ jobs:
 
   build-mac-pkg:
     needs: quality
+    if: github.event_name != 'workflow_dispatch' || inputs.dry_run_foundry != true
     runs-on: macos-latest
 
     steps:
@@ -275,7 +316,7 @@ jobs:
           echo "✓ Using manual input version: $VERSION"
 
           # Validate version format
-          if ! echo "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+'; then
+          if ! echo "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "❌ Invalid version format: '$VERSION'. Expected format: v0.0.0 or 0.0.0"
             exit 1
           fi
@@ -284,7 +325,7 @@ jobs:
           echo "✓ Using tag version: $VERSION"
 
           # Validate tag version format
-          if ! echo "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+'; then
+          if ! echo "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "❌ Invalid tag version format: '$VERSION'. Expected format: v0.0.0"
             exit 1
           fi
@@ -309,7 +350,7 @@ jobs:
           echo "📦 Found package.json version: $PACKAGE_VERSION"
 
           # Validate version format
-          if ! echo "$PACKAGE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+'; then
+          if ! echo "$PACKAGE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
             echo "❌ Invalid package.json version format: '$PACKAGE_VERSION'. Expected format: 0.0.0"
             exit 1
           fi
@@ -317,6 +358,14 @@ jobs:
           VERSION="v$PACKAGE_VERSION"
           echo "✓ Using package.json version: $VERSION"
         fi
+
+        MANIFEST_VERSION=$(node -p "require('./package.json').version")
+        VERSION_NO_V="${VERSION#v}"
+        if [ "$VERSION_NO_V" != "$MANIFEST_VERSION" ]; then
+          echo "❌ Artifact version '$VERSION_NO_V' does not match package.json version '$MANIFEST_VERSION'"
+          exit 1
+        fi
+        VERSION="v$VERSION_NO_V"
 
         echo "🎯 Final PACKAGE_VERSION: $VERSION"
         echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
@@ -373,6 +422,8 @@ jobs:
     needs: [build-nsis, build-mac-pkg]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout code
@@ -432,7 +483,7 @@ jobs:
         cat > standalone-mcp-server/package.json << EOF
         {
           "name": "foundry-mcp-server",
-          "version": "${{ env.PACKAGE_VERSION }}",
+          "version": "${PACKAGE_VERSION#v}",
           "description": "Foundry VTT MCP Server - Standalone Installation",
           "main": "index.js",
           "scripts": {
@@ -460,7 +511,7 @@ jobs:
         3. Configure Claude Desktop to connect to this server
         4. Install the MCP Bridge module in Foundry VTT
 
-        For full documentation visit: https://github.com/adambdooley/foundry-vtt-mcp
+        For full documentation visit: ${{ github.server_url }}/${{ github.repository }}
 
         Version: ${{ env.PACKAGE_VERSION }}
         EOF
@@ -502,7 +553,7 @@ jobs:
 
           **Foundry VTT Users:**
           - Install directly from Foundry's module browser
-          - Or use manifest: `https://github.com/adambdooley/foundry-vtt-mcp/releases/latest/download/module.json`
+          - Or use manifest: `${{ github.server_url }}/${{ github.repository }}/releases/latest/download/module.json`
 
           ### Quick Start
           1. Choose your installation method above
@@ -523,7 +574,7 @@ jobs:
           - Enhanced creature index for instant monster searches
           - AI-powered battlemap generation with ComfyUI integration
 
-          For full documentation, visit: https://github.com/adambdooley/foundry-vtt-mcp
+          For full documentation, visit: ${{ github.server_url }}/${{ github.repository }}
         files: |
           installer/build/FoundryMCPServer-Setup-${{ env.PACKAGE_VERSION }}.exe
           installer/build/FoundryMCPServer-${{ env.PACKAGE_VERSION }}.dmg
@@ -534,59 +585,17 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Update Foundry VTT Package Registry
-      run: |
-        echo "🔄 Updating Foundry VTT Package Registry..."
+    - name: Validate Foundry registry request
+      run: node scripts/publish-foundry-release.mjs --dry-run --tag "${{ github.ref_name }}"
 
-        # Extract package information
-        PACKAGE_ID=$(node -p "require('./packages/foundry-module/module.json').id")
-        VERSION="${{ env.PACKAGE_VERSION }}"
-        VERSION="${VERSION#v}"  # Remove v prefix
-        MANIFEST_URL="https://github.com/adambdooley/foundry-vtt-mcp/releases/download/${{ github.ref_name }}/module.json"
-        RELEASE_NOTES_URL="https://github.com/adambdooley/foundry-vtt-mcp/releases/tag/${{ github.ref_name }}"
+    - name: Publish Foundry registry release
+      if: vars.FOUNDRY_REGISTRY_PUBLISH_ENABLED == 'true' && vars.FOUNDRY_REGISTRY_AUTHORIZED_REPOSITORY == github.repository
+      env:
+        FOUNDRY_REGISTRY_PUBLISH_ENABLED: ${{ vars.FOUNDRY_REGISTRY_PUBLISH_ENABLED }}
+        FOUNDRY_REGISTRY_AUTHORIZED_REPOSITORY: ${{ vars.FOUNDRY_REGISTRY_AUTHORIZED_REPOSITORY }}
+        FOUNDRY_PACKAGE_RELEASE_TOKEN: ${{ secrets.FOUNDRY_PACKAGE_RELEASE_TOKEN }}
+      run: node scripts/publish-foundry-release.mjs --publish --tag "${{ github.ref_name }}"
 
-        MINIMUM=$(node -p "require('./packages/foundry-module/module.json').compatibility.minimum")
-        VERIFIED=$(node -p "require('./packages/foundry-module/module.json').compatibility.verified")
-        MAXIMUM=$(node -p "require('./packages/foundry-module/module.json').compatibility.maximum")
-
-        echo "📦 Package ID: $PACKAGE_ID"
-        echo "📝 Version: $VERSION"
-        echo "📎 Manifest URL: $MANIFEST_URL"
-        echo "📋 Release Notes: $RELEASE_NOTES_URL"
-
-        # Prepare API request body
-        REQUEST_BODY=$(cat <<EOF
-        {
-          "id": "$PACKAGE_ID",
-          "release": {
-            "version": "$VERSION",
-            "manifest": "$MANIFEST_URL",
-            "notes": "$RELEASE_NOTES_URL",
-            "compatibility": {
-              "minimum": "$MINIMUM",
-              "verified": "$VERIFIED",
-              "maximum": "$MAXIMUM"
-            }
-          }
-        }
-        EOF
-        )
-
-        echo "🔧 Request Body:"
-        echo "$REQUEST_BODY"
-
-        # Make API call to Foundry VTT Package Registry
-        RESPONSE=$(curl -X POST \
-          -H "Content-Type: application/json" \
-          -H "Authorization: ${{ secrets.FOUNDRY_PACKAGE_RELEASE_TOKEN }}" \
-          -d "$REQUEST_BODY" \
-          https://foundryvtt.com/_api/packages/release_version/)
-
-        if [ $? -eq 0 ]; then
-          echo "✅ Successfully updated Foundry VTT Package Registry"
-          echo "📄 Response: $RESPONSE"
-        else
-          echo "❌ Failed to update Foundry VTT Package Registry"
-          echo "🔍 Error: $RESPONSE"
-          exit 1
-        fi
+    - name: Report disabled Foundry registry publication
+      if: vars.FOUNDRY_REGISTRY_PUBLISH_ENABLED != 'true' || vars.FOUNDRY_REGISTRY_AUTHORIZED_REPOSITORY != github.repository
+      run: echo "::notice::Foundry registry publication is disabled or this repository is not authorized."

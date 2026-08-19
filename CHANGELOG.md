@@ -1,7 +1,12 @@
 ## Unreleased
 
+---
+
+## v0.9.0 (2026-08-19)
+
 ### New Features
 
+- Added coordinate-aware token placement with explicit scene bounds and grid metadata.
 - Added `get-token-actions` and `use-token-action` so the MCP bridge can inspect and execute attacks, spells, legendary actions, and lair actions from placed tokens, including unlinked synthetic actors.
 
 ### Fixes
@@ -9,6 +14,11 @@
 - Token movement, updates, and deletion now report the Foundry bridge's actual result fields.
 - Omitting `active` from `toggle-token-condition` now toggles the current state and avoids duplicate effects.
 - D&D 5e item use now honors `skipDialog` and reports whether GM interaction is required.
+
+### Release Engineering
+
+- Added a deterministic release quality gate for versions, types, tests, and circular dependencies.
+- Established independent downstream release identity and deny-by-default Foundry registry publication.
 
 ---
 

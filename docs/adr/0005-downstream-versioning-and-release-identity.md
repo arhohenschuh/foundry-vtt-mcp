@@ -52,6 +52,18 @@ The existing `foundry-mcp-bridge` module ID is retained for local compatibility.
 public distribution under a new ID is a separate, breaking migration decision and must receive
 its own ADR and settings/data migration plan.
 
+## Implementation status
+
+Implemented on 2026-08-19:
+
+- downstream release identity is `arhohenschuh/foundry-vtt-mcp`;
+- upstream remains `adambdooley/foundry-vtt-mcp` for provenance and collision checks;
+- the current compatible feature set is prepared as `0.9.0`;
+- release checks enforce repository identity, tag/version equality, distributable URLs, and
+  upstream version uniqueness;
+- Foundry registry dry run is non-writing and registry publication is disabled unless explicitly
+  authorized for the exact downstream repository.
+
 ## Consequences
 
 ### Positive
@@ -64,7 +76,8 @@ its own ADR and settings/data migration plan.
 
 ### Negative
 
-- The next release is blocked until repository URLs and registry authority are explicit.
+- Publishing to the Foundry registry requires explicit owner-managed repository variables and a
+  token; a GitHub release alone does not imply registry publication.
 - Retaining the upstream module ID requires active collision checks while both lines exist.
 - Strict compatibility rules may cause `1.0.0` earlier than a permissive interpretation of
   pre-1.0 SemVer.
@@ -90,7 +103,12 @@ its own ADR and settings/data migration plan.
 - `packages/foundry-module/module.json`
 - `shared/package.json`
 - `.github/workflows/build-complete-release.yml`
+- `release.config.json`
+- `scripts/check-release-identity.mjs`
+- `scripts/publish-foundry-release.mjs`
+- `scripts/publish-foundry-release.test.mjs`
 - `scripts/check-version-consistency.mjs`
+- `docs/releasing.md`
 
 ## Related bug record
 

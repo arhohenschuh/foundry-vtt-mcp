@@ -19,4 +19,4 @@ long-lived architectural decision.
 
 - [0001-placed-token-action-context-loss.md](./0001-placed-token-action-context-loss.md) - Resolved: placed-token actions lost synthetic actor context
 - [0002-stale-local-runtime-after-source-update.md](./0002-stale-local-runtime-after-source-update.md) - Resolved: local Automation ran stale generated artifacts
-- [0003-downstream-release-targets-upstream.md](./0003-downstream-release-targets-upstream.md) - Open: downstream releases still target upstream identity
+- [0003-downstream-release-targets-upstream.md](./0003-downstream-release-targets-upstream.md) - Resolved: downstream releases targeted upstream identity

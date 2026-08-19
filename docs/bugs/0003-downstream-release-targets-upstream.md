@@ -1,8 +1,9 @@
 # BUG-0003. Downstream releases still target upstream identity
 
-- Status: Open
+- Status: Resolved
 - Severity: Release blocker
 - Detected: 2026-08-19
+- Resolved: 2026-08-19
 - Affected surface: versions, release assets, update channel, Foundry package registry
 
 ## Symptom
@@ -26,21 +27,37 @@ The fork inherited release identity as static metadata:
 This was valid while the checkout was only an upstream contribution branch. It is unsafe once the
 downstream line produces independently deployed behavior.
 
-## Required resolution
+## Resolution
 
-1. Decide whether releases remain upstream contributions or use a separate downstream channel.
-2. Parameterize repository URLs where GitHub context is available and set static module metadata
-   to the selected owner.
-3. Make registry publication opt-in for the authorized repository and make dry-run behavior
-   executable and testable.
-4. Add a release check that rejects upstream/fork identity mismatches and version reuse.
-5. Prepare the current backward-compatible capability set as `0.9.0` only after those checks pass.
+1. Selected `arhohenschuh/foundry-vtt-mcp` as the downstream release and update channel, with
+   `adambdooley/foundry-vtt-mcp` retained explicitly as upstream.
+2. Moved package metadata, module update URLs, installation links, runtime guidance, installer
+   text, and generated release text to the downstream repository.
+3. Replaced the workflow's inline `curl` with a tested publication client. Dry run renders the
+   exact request without network access. Publication requires an enable variable, an exact
+   authorized-repository variable, the matching GitHub repository, and a token.
+4. Added a release identity gate that verifies metadata, local/CI repository identity, tag/version
+   agreement, absence of upstream URLs on distributable surfaces, and upstream tag uniqueness.
+5. Prepared the backward-compatible capability set as `0.9.0` across all ten manifest and
+   lockfile version records.
 
-## Current containment
+## Regression evidence
 
-- Do not create or publish a downstream release tag.
-- Local builds remain commit-pinned by the Automation refresh report.
-- `npm run version:check` prevents internal manifest drift but does not prove repository identity.
+- `npm run version:check`: all ten version records agreed on `0.9.0`.
+- `npm run release:check`: downstream metadata and Git origin passed.
+- `npm run release:check -- --check-upstream-tags`: `v0.9.0` did not exist upstream.
+- `npm run test:release`: six registry-client and workflow-structure tests passed.
+- `npm run typecheck`: all three workspaces passed.
+- `npm test`: six release tests and 122 MCP server tests passed.
+- `npm run audit:circular`: 93 files processed with no circular dependency.
+- `npm run build:release`, MCP schema smoke, manifest validation, and installer staging passed for
+  `v0.9.0`; the manifest reported zero errors and zero warnings.
+- The workflow dry-run input now executes a dedicated non-writing job.
+- The workflow contains no direct Foundry registry HTTP call.
+
+Registry publication remains disabled unless the owner supplies the explicit repository variables
+and secret documented in [`../releasing.md`](../releasing.md). This is an authority boundary, not
+an unresolved defect.
 
 ## Architectural consequence
 

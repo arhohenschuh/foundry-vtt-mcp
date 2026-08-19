@@ -1,6 +1,6 @@
 {
   "name": "foundry-mcp-integration",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "MCP server that bridges Foundry VTT game data with Claude Desktop",
   "private": true,
   "workspaces": [
@@ -16,8 +16,10 @@
     "bundle:server": "npm run build:bundle --workspace=packages/mcp-server",
     "build:release": "npm run build:shared && npm run build:server && npm run bundle:server && npm run build:foundry",
     "installer:stage": "node installer/build-nsis.js --skip-download --skip-nsis",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test:release && npm run test --workspaces --if-present",
+    "test:release": "node --test scripts/*.test.mjs",
     "version:check": "node scripts/check-version-consistency.mjs",
+    "release:check": "node scripts/check-release-identity.mjs",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write \"**/*.{ts,js,json,md}\"",
@@ -45,7 +47,8 @@
     "madge": "^8.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yaml": "^2.8.4"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -55,7 +58,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/adambdooley/foundry-vtt-mcp.git"
+    "url": "https://github.com/arhohenschuh/foundry-vtt-mcp.git"
   },
   "keywords": [
     "foundry-vtt",

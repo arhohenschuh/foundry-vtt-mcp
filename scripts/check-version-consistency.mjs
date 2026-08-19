@@ -18,28 +18,46 @@ const FILES = [
   'packages/foundry-module/module.json',
 ];
 
-const entries = FILES.map((file) => {
+const entries = FILES.map(file => {
   const full = path.join(repoRoot, file);
   const version = JSON.parse(fs.readFileSync(full, 'utf8')).version;
   return { file, version };
 });
 
+const packageLock = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package-lock.json'), 'utf8'));
+entries.push(
+  { file: 'package-lock.json', version: packageLock.version },
+  { file: 'package-lock.json#packages[""]', version: packageLock.packages[''].version },
+  {
+    file: 'package-lock.json#packages["packages/mcp-server"]',
+    version: packageLock.packages['packages/mcp-server'].version,
+  },
+  {
+    file: 'package-lock.json#packages["packages/foundry-module"]',
+    version: packageLock.packages['packages/foundry-module'].version,
+  },
+  {
+    file: 'package-lock.json#packages["shared"]',
+    version: packageLock.packages.shared.version,
+  }
+);
+
 for (const { file, version } of entries) {
   console.log(`  ${String(version).padEnd(10)} ${file}`);
 }
 
-const distinct = [...new Set(entries.map((e) => e.version))];
+const distinct = [...new Set(entries.map(e => e.version))];
 
 if (distinct.length === 1) {
-  console.log(`\n[version-check] OK — all ${entries.length} manifests agree: ${distinct[0]}`);
+  console.log(`\n[version-check] OK — all ${entries.length} version records agree: ${distinct[0]}`);
   process.exit(0);
 }
 
 console.error(
-  `\n[version-check] FAIL — found ${distinct.length} distinct versions: ${distinct.join(', ')}`,
+  `\n[version-check] FAIL — found ${distinct.length} distinct versions: ${distinct.join(', ')}`
 );
 console.error(
-  '  All package.json files and module.json must share one version. Bump them together',
+  '  All package manifests, module.json, and package-lock workspace records must share one version.'
 );
 console.error('  in a single "chore(release): prepare vX.Y.Z" commit before tagging a release.');
 process.exit(1);
