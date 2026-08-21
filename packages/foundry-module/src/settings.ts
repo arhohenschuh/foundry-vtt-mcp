@@ -83,7 +83,7 @@ export class ModuleSettings {
 
         getData(): any {
           return {
-            autoStartService: game.settings.get(MODULE_ID, 'mapGenAutoStart') || true,
+            autoStartService: game.settings.get(MODULE_ID, 'mapGenAutoStart') ?? false,
             mapGenQuality: game.settings.get(MODULE_ID, 'mapGenQuality') || 'low',
             connectionStatus: this.getConnectionStatus(),
             connectionStatusText: this.getConnectionStatusText(),
@@ -292,7 +292,7 @@ export class ModuleSettings {
       scope: 'world',
       config: false, // Hidden from main config, accessible via submenu only
       type: Boolean,
-      default: true,
+      default: false,
     });
 
     game.settings.register(this.moduleId, 'mapGenQuality', {

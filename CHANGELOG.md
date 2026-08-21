@@ -2,6 +2,15 @@
 
 ---
 
+## v0.9.1 (2026-08-21)
+
+### Fixes
+
+- Disabled automatic startup of the AI map generation service by default.
+- Preserved an explicitly disabled map generation auto-start setting in the configuration form.
+
+---
+
 ## v0.9.0 (2026-08-19)
 
 ### New Features
